@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>إشارات Quotex الذكية</title>
+<style>
+:root{--bg:#0d1117;--card:#1c2128;--panel:#161b22;--border:#30363d;--text:#e6edf3;--muted:#8b949e;--green:#3fb950;--red:#f85149;--blue:#58a6ff;--amber:#d29922;--purple:#a371f7}
+*{box-sizing:border-box;margin:0;padding:0;font-family:"Segoe UI",Tahoma,system-ui,sans-serif}
+body{background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:75px}
+.app{max-width:480px;margin:0 auto;padding:12px}
+.head{text-align:center;padding:10px 0 6px}
+.head h1{font-size:17px}.head p{font-size:11px;color:var(--muted);margin-top:3px}
+.status{text-align:center;font-size:11.5px;color:var(--green);margin-bottom:10px;padding:8px;background:rgba(63,185,80,.08);border-radius:8px;border:1px solid rgba(63,185,80,.3);line-height:1.45}
+.section{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px}
+.section-title{font-size:12px;color:var(--muted);font-weight:600;margin-bottom:8px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+label{display:block;font-size:11px;color:var(--muted);margin-bottom:3px}
+input{width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);background:#0d1117;color:var(--text);font-size:13px}
+.risk-box{background:rgba(88,166,255,.07);border:1px solid rgba(88,166,255,.3);border-radius:8px;padding:10px;margin-top:10px;font-size:12px;line-height:1.7}
+.risk-box b{color:var(--blue)}
+.clock{display:flex;gap:8px;margin-bottom:10px}
+.clock div{flex:1;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:7px;text-align:center}
+.clock .lbl{font-size:10px;color:var(--muted)}.clock .val{font-size:14px;font-weight:700;margin-top:2px;color:var(--blue)}
+.controls{display:flex;gap:8px;margin-bottom:12px}
+.controls button{flex:1;padding:10px;border-radius:9px;border:1px solid var(--border);background:var(--panel);color:var(--text);font-size:12px;font-weight:600;cursor:pointer}
+.controls button.on{background:var(--green);color:#04260d;border-color:var(--green)}
+.signal-card{background:var(--card);border-radius:14px;padding:13px 15px;margin-bottom:9px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.signal-card .left{flex:1;min-width:0}
+.signal-card .time{font-size:11px;color:var(--muted);margin-bottom:2px}
+.signal-card .pair{font-size:15px;font-weight:700;margin-bottom:3px}
+.signal-card .info{font-size:12px;color:var(--muted)}
+.signal-card .info .d{color:var(--red);font-weight:600}.signal-card .info .u{color:var(--green);font-weight:600}
+.signal-card .entry{font-size:11px;color:var(--purple);margin-top:4px;font-weight:600}
+.signal-card .strat{font-size:10px;color:#8b949e;margin-top:3px}
+.signal-card .risk{font-size:11px;color:var(--amber);margin-top:4px}
+.signal-card .arrow{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:900;flex-shrink:0;margin-top:4px}
+.signal-card .arrow.d{background:rgba(248,81,73,.15);color:var(--red)}
+.signal-card .arrow.u{background:rgba(63,185,80,.15);color:var(--green)}
+.empty{text-align:center;color:var(--muted);padding:35px 0;font-size:13px}
+.nav{position:fixed;bottom:0;left:0;right:0;background:#161b22;border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:8px 0;max-width:480px;margin:0 auto}
+.nav div{text-align:center;font-size:10px;color:var(--muted)}.nav div.active{color:var(--red)}
+.nav .icon{font-size:18px;margin-bottom:2px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="head">
+    <h1>إشارات Quotex الذكية</h1>
+    <p>إطار 5 دقائق · AI-v4 · تحديث كل ساعة</p>
+  </div>
+
+  <div class="status" id="status">جاهز — AI-v4 · اضغط تشغيل لبدء الإشارات</div>
+
+  <div class="clock">
+    <div><div class="lbl">UTC</div><div class="val" id="clk">--:--:--</div></div>
+    <div><div class="lbl">التحديث القادم</div><div class="val" id="nextUpdate">—</div></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">إدارة رأس المال</div>
+    <div class="row">
+      <div>
+        <label>رأس المال ($)</label>
+        <input type="number" id="capital" value="1000" min="10" step="10">
+      </div>
+      <div>
+        <label>نسبة المخاطرة %</label>
+        <input type="number" id="riskPct" value="1.5" min="0.5" max="5" step="0.1">
+      </div>
+    </div>
+    <div class="risk-box">
+      المخاطرة المقترحة لكل صفقة: <b id="riskAmount">$15.00</b><br>
+      عدد الصفقات الآمنة تقريباً: <b id="safeTrades">66</b>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="btnOn" class="on">تشغيل (كل ساعة)</button>
+    <button id="btnOff">إيقاف</button>
+    <button id="btnNow">تحليل الآن</button>
+  </div>
+
+  <div id="list"></div>
+  <div class="empty" id="empty">لا توجد إشارات بعد<br>اضغط "تشغيل" أو "تحليل الآن"</div>
+</div>
+
+<div class="nav">
+  <div><div class="icon">☰</div>المزيد</div>
+  <div><div class="icon">ƒx</div>الروبوت</div>
+  <div class="active"><div class="icon">📈</div>الإشارات</div>
+  <div><div class="icon">📊</div>المنصة</div>
+</div>
+
+<script>
+(function(){
+  // ═══════════════════════════════════════════════
+  // 🔑 ضع مفتاح Twelve Data هنا بين علامتي التنصيص
+  var TWELVE_API_KEY = "51fd331b829d4a1c8bf244f7eec93b8b";
+  // ═══════════════════════════════════════════════
+
+  function get(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
+  function set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+
+  // أزواج Twelve Data (بصيغة BASE/QUOTE)
+  var PAIRS = [
+    {s:"EUR/USD", n:"EUR/USD"},
+    {s:"EUR/JPY", n:"EUR/JPY"},
+    {s:"GBP/JPY", n:"GBP/JPY"},
+    {s:"AUD/JPY", n:"AUD/JPY"},
+    {s:"USD/JPY", n:"USD/JPY"},
+    {s:"EUR/CHF", n:"EUR/CHF"},
+    {s:"EUR/GBP", n:"EUR/GBP"},
+    {s:"GBP/CHF", n:"GBP/CHF"},
+    {s:"GBP/USD", n:"GBP/USD"},
+    {s:"XAU/USD", n:"XAU/USD"},
+    {s:"BTC/USD", n:"Bitcoin"},
+    {s:"ETH/USD", n:"Ethereum"}
+  ];
+
+  var signals = get("quotex_ai_sig", []);
+  var timer = null, nextHour = null;
+
+  function tick(){
+    var n = new Date();
+    document.getElementById("clk").textContent =
+      ("0"+n.getUTCHours()).slice(-2)+":"+("0"+n.getUTCMinutes()).slice(-2)+":"+("0"+n.getUTCSeconds()).slice(-2);
+    if(nextHour){
+      var diff = Math.max(0, Math.floor((nextHour - Date.now())/1000));
+      document.getElementById("nextUpdate").textContent = Math.floor(diff/60)+":"+("0"+(diff%60)).slice(-2);
+    }
+  }
+  setInterval(tick, 1000); tick();
+
+  function updateRisk(){
+    var capital = parseFloat(document.getElementById("capital").value) || 1000;
+    var pct = parseFloat(document.getElementById("riskPct").value) || 1.5;
+    document.getElementById("riskAmount").textContent = "$" + (capital * (pct/100)).toFixed(2);
+    document.getElementById("safeTrades").textContent = Math.floor(100 / pct);
+  }
+  document.getElementById("capital").oninput = updateRisk;
+  document.getElementById("riskPct").oninput = updateRisk;
+  updateRisk();
+
+  function ago(ts){
+    var d = Math.floor((Date.now() - ts)/1000);
+    if(d < 60) return "الآن";
+    if(d < 3600) return Math.floor(d/60) + " دقيقة";
+    var t = new Date(ts);
+    return ("0"+t.getHours()).slice(-2)+":"+("0"+t.getMinutes()).slice(-2);
+  }
+
+  function render(){
+    var list = document.getElementById("list"), empty = document.getElementById("empty");
+    if(!signals.length){ list.innerHTML = ""; empty.style.display = "block"; return; }
+    empty.style.display = "none";
+    var capital = parseFloat(document.getElementById("capital").value) || 1000;
+    var pct = parseFloat(document.getElementById("riskPct").value) || 1.5;
+    var riskAmt = (capital * (pct/100)).toFixed(2);
+
+    list.innerHTML = signals.map(function(s){
+      var d = s.dir === "DOWN";
+      return '<div class="signal-card"><div class="left">'+
+        '<div class="time">'+ago(s.t)+'</div>'+
+        '<div class="pair">'+s.n+'</div>'+
+        '<div class="info">إشارة تداول <span class="'+(d?"d":"u")+'">'+(d?"للهبوط":"للصعود")+'</span> — '+s.bars+' دقيقة · ثقة '+s.conf+'%</div>'+
+        '<div class="entry">نقطة الدخول: '+s.entry+'</div>'+
+        '<div class="strat">'+s.strat+'</div>'+
+        '<div class="risk">المخاطرة المقترحة: $'+riskAmt+'</div>'+
+        '</div><div class="arrow '+(d?"d":"u")+'">'+(d?"↓":"↑")+'</div></div>';
+    }).join("");
+  }
+
+  function ema(arr, p){
+    if(!arr || arr.length < p) return null;
+    var k = 2/(p+1), e = arr[0];
+    for(var i=1; i<arr.length; i++) e = arr[i]*k + e*(1-k);
+    return e;
+  }
+  function sma(arr, p){
+    if(!arr || arr.length < p) return null;
+    var s = 0;
+    for(var i=arr.length-p; i<arr.length; i++) s += arr[i];
+    return s / p;
+  }
+  function rsi(closes, p){
+    if(closes.length < p+1) return 50;
+    var gains = [], losses = [];
+    for(var i=1; i<closes.length; i++){
+      var d = closes[i] - closes[i-1];
+      gains.push(d > 0 ? d : 0);
+      losses.push(d < 0 ? -d : 0);
+    }
+    var avgG = 0, avgL = 0;
+    for(var i=0; i<p; i++){ avgG += gains[i]; avgL += losses[i]; }
+    avgG /= p; avgL /= p;
+    for(var i=p; i<gains.length; i++){
+      avgG = (avgG*(p-1) + gains[i]) / p;
+      avgL = (avgL*(p-1) + losses[i]) / p;
+    }
+    if(avgL === 0) return 100;
+    return 100 - (100 / (1 + avgG/avgL));
+  }
+  function macd(closes){
+    if(closes.length < 35) return null;
+    var ema12 = [], ema26 = [];
+    var k12 = 2/13, k26 = 2/27;
+    var e12 = closes[0], e26 = closes[0];
+    for(var i=0; i<closes.length; i++){
+      e12 = closes[i]*k12 + e12*(1-k12);
+      e26 = closes[i]*k26 + e26*(1-k26);
+      ema12.push(e12); ema26.push(e26);
+    }
+    var macdLine = [];
+    for(var i=0; i<closes.length; i++) macdLine.push(ema12[i]-ema26[i]);
+    var k9 = 2/10, sig = macdLine[0];
+    var signal = [];
+    for(var i=0; i<macdLine.length; i++){
+      sig = macdLine[i]*k9 + sig*(1-k9);
+      signal.push(sig);
+    }
+    var last = macdLine.length-1;
+    return {
+      macd: macdLine[last],
+      signal: signal[last],
+      hist: macdLine[last]-signal[last],
+      prevHist: last>0 ? macdLine[last-1]-signal[last-1] : 0
+    };
+  }
+  function stochastic(h, l, c, kP, dP){
+    if(c.length < kP+dP) return null;
+    var kArr = [];
+    for(var i=kP-1; i<c.length; i++){
+      var hh = -Infinity, ll = Infinity;
+      for(var j=i-kP+1; j<=i; j++){ if(h[j]>hh) hh=h[j]; if(l[j]<ll) ll=l[j]; }
+      kArr.push(hh===ll ? 50 : ((c[i]-ll)/(hh-ll))*100);
+    }
+    var d = sma(kArr, dP);
+    return { k: kArr[kArr.length-1], d: d, prevK: kArr.length>1 ? kArr[kArr.length-2] : kArr[0] };
+  }
+  function bollinger(closes, p, mult){
+    if(closes.length < p) return null;
+    var mean = sma(closes, p);
+    var sum = 0;
+    for(var i=closes.length-p; i<closes.length; i++) sum += Math.pow(closes[i]-mean, 2);
+    var std = Math.sqrt(sum/p);
+    return { mid: mean, upper: mean+mult*std, lower: mean-mult*std, width: (2*mult*std)/mean };
+  }
+  function atr(h, l, c, p){
+    if(c.length < p+1) return null;
+    var trs = [];
+    for(var i=1; i<c.length; i++){
+      var tr = Math.max(h[i]-l[i], Math.abs(h[i]-c[i-1]), Math.abs(l[i]-c[i-1]));
+      trs.push(tr);
+    }
+    return sma(trs, p);
+  }
+
+  // ═══ جلب الشموع من Twelve Data ═══
+  async function getCandles(sym, interval, limit){
+    try{
+      if(!TWELVE_API_KEY || TWELVE_API_KEY === "51fd331b829d4a1c8bf244f7eec93b8b"){
+        console.warn("لم تضع مفتاح API في الكود");
+        return null;
+      }
+      var url = "https://api.twelvedata.com/time_series"
+        + "?symbol=" + encodeURIComponent(sym)
+        + "&interval=" + interval
+        + "&outputsize=" + limit
+        + "&format=JSON"
+        + "&apikey=" + TWELVE_API_KEY;
+      var r = await fetch(url, {cache:"no-store"});
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      var d = await r.json();
+      if(d.status === "error"){
+        console.warn("Twelve Data:", d.message);
+        return null;
+      }
+      // Twelve Data ترجع الشموع بترتيب تنازلي → نعكسها لتصاعدي
+      var values = (d.values || []).slice().reverse();
+      // نطبّع الأرقام
+      return values.map(function(b){
+        return {
+          open: parseFloat(b.open),
+          high: parseFloat(b.high),
+          low: parseFloat(b.low),
+          close: parseFloat(b.close),
+          volume: parseFloat(b.volume || 0)
+        };
+      });
+    }catch(e){
+      console.warn("fetch failed for", sym, e);
+      return null;
+    }
+  }
+
+  // ═══ AI Ensemble — إطار 5 دقائق أساسي + اتجاه 15 دقيقة ═══
+  function aiEnsemble(bars5m, bars15m){
+    if(!bars5m || bars5m.length < 45) return null;
+
+    var c = bars5m.map(b => +b.close);
+    var o = bars5m.map(b => +b.open);
+    var h = bars5m.map(b => +b.high);
+    var l = bars5m.map(b => +b.low);
+    var vol = bars5m.map(b => +(b.volume || 0));
+    var last = c.length - 1;
+    var factors = [];
+    var agreeUp = 0, agreeDown = 0;
+
+    var e9 = ema(c.slice(-40), 9);
+    var e21 = ema(c.slice(-40), 21);
+    var e50 = ema(c.length >= 55 ? c.slice(-55) : c, Math.min(50, c.length-1));
+    if(e9 && e21){
+      var emaScore = 0;
+      if(e9 > e21){ emaScore += 1.1; agreeUp++; } else { emaScore -= 1.1; agreeDown++; }
+      if(e50){
+        if(e21 > e50){ emaScore += 0.7; agreeUp++; } else { emaScore -= 0.7; agreeDown++; }
+        if(c[last] > e50){ emaScore += 0.4; } else { emaScore -= 0.4; }
+      }
+      factors.push({name:"EMA", score:emaScore, weight:2.6});
+    }
+
+    var m = macd(c);
+    if(m){
+      var macdScore = 0;
+      if(m.hist > 0 && m.prevHist <= 0){ macdScore = 1.6; agreeUp++; }
+      else if(m.hist < 0 && m.prevHist >= 0){ macdScore = -1.6; agreeDown++; }
+      else if(m.hist > 0){ macdScore = 0.9; agreeUp++; }
+      else { macdScore = -0.9; agreeDown++; }
+      if(m.macd > m.signal) macdScore += 0.3; else macdScore -= 0.3;
+      factors.push({name:"MACD", score:macdScore, weight:2.5});
+    }
+
+    var r14 = rsi(c, 14);
+    var rPrev = rsi(c.slice(0, -3), 14);
+    var rsiScore = 0;
+    if(r14 < 28){ rsiScore = 1.6; agreeUp++; }
+    else if(r14 > 72){ rsiScore = -1.6; agreeDown++; }
+    else if(r14 < 40){ rsiScore = 0.7; agreeUp++; }
+    else if(r14 > 60){ rsiScore = -0.7; agreeDown++; }
+    else if(r14 > 52){ rsiScore = 0.35; }
+    else if(r14 < 48){ rsiScore = -0.35; }
+    if(rPrev !== undefined){
+      if(c[last] < c[last-3] && r14 > rPrev + 3){ rsiScore += 0.8; agreeUp++; }
+      if(c[last] > c[last-3] && r14 < rPrev - 3){ rsiScore -= 0.8; agreeDown++; }
+    }
+    factors.push({name:"RSI", score:rsiScore, weight:2.3});
+
+    var st = stochastic(h, l, c, 14, 3);
+    if(st){
+      var stScore = 0;
+      if(st.k < 20 && st.k > st.prevK){ stScore = 1.5; agreeUp++; }
+      else if(st.k > 80 && st.k < st.prevK){ stScore = -1.5; agreeDown++; }
+      else if(st.k < 30){ stScore = 0.8; agreeUp++; }
+      else if(st.k > 70){ stScore = -0.8; agreeDown++; }
+      else if(st.k > st.d){ stScore = 0.5; }
+      else { stScore = -0.5; }
+      factors.push({name:"Stoch", score:stScore, weight:2.0});
+    }
+
+    var bb = bollinger(c, 20, 2);
+    if(bb){
+      var bbScore = 0;
+      if(c[last] <= bb.lower){ bbScore = 1.4; agreeUp++; }
+      else if(c[last] >= bb.upper){ bbScore = -1.4; agreeDown++; }
+      else if(c[last] < bb.mid && c[last] > c[last-1]){ bbScore = 0.5; }
+      else if(c[last] > bb.mid && c[last] < c[last-1]){ bbScore = -0.5; }
+      if(bb.width < 0.0015) bbScore *= 0.6;
+      factors.push({name:"BB", score:bbScore, weight:1.9});
+    }
+
+    var mom5 = c[last] - c[last-5];
+    var mom10 = c[last] - c[last-10];
+    var momScore = 0;
+    if(mom5 > 0 && mom10 > 0){ momScore = 1.2; agreeUp++; }
+    else if(mom5 < 0 && mom10 < 0){ momScore = -1.2; agreeDown++; }
+    else if(mom5 > 0){ momScore = 0.6; }
+    else { momScore = -0.6; }
+    factors.push({name:"زخم", score:momScore, weight:1.6});
+
+    var cb = c[last] - o[last];
+    var pb = c[last-1] - o[last-1];
+    var body = Math.abs(cb);
+    var pbody = Math.abs(pb);
+    var uw = h[last] - Math.max(o[last], c[last]);
+    var lw = Math.min(o[last], c[last]) - l[last];
+    var range = h[last] - l[last] || 0.00001;
+    var patternScore = 0;
+    var patternName = "";
+
+    if(cb > 0 && pb < 0 && c[last] > o[last-1] && o[last] < c[last-1] && body > pbody*0.9){
+      patternScore = 1.7; patternName = "Engulfing"; agreeUp++;
+    } else if(cb < 0 && pb > 0 && c[last] < o[last-1] && o[last] > c[last-1] && body > pbody*0.9){
+      patternScore = -1.7; patternName = "Engulfing"; agreeDown++;
+    }
+    else if(lw > body*2.2 && uw < body*0.45 && cb >= 0){
+      patternScore = 1.5; patternName = "Pinbar"; agreeUp++;
+    } else if(uw > body*2.2 && lw < body*0.45 && cb <= 0){
+      patternScore = -1.5; patternName = "Pinbar"; agreeDown++;
+    }
+    else if(body < range*0.15){
+      if(lw > range*0.45){ patternScore = 0.9; patternName = "Doji"; agreeUp++; }
+      else if(uw > range*0.45){ patternScore = -0.9; patternName = "Doji"; agreeDown++; }
+    }
+    if(last >= 2){
+      var b0 = c[last]-o[last], b1 = c[last-1]-o[last-1], b2 = c[last-2]-o[last-2];
+      if(b0>0 && b1>0 && b2>0 && c[last]>c[last-1] && c[last-1]>c[last-2]){
+        patternScore = Math.max(patternScore, 1.3); patternName = patternName||"3Soldiers"; agreeUp++;
+      }
+      if(b0<0 && b1<0 && b2<0 && c[last]<c[last-1] && c[last-1]<c[last-2]){
+        patternScore = Math.min(patternScore, -1.3); patternName = patternName||"3Crows"; agreeDown++;
+      }
+    }
+    if(patternScore !== 0){
+      factors.push({name: patternName || "Pattern", score: patternScore, weight: 2.4});
+    }
+
+    var look = Math.min(8, last);
+    var rh = -Infinity, rl = Infinity;
+    for(var i=1; i<=look; i++){ if(h[last-i]>rh) rh=h[last-i]; if(l[last-i]<rl) rl=l[last-i]; }
+    var brkScore = 0;
+    if(c[last] > rh && c[last-1] <= rh){ brkScore = 1.5; agreeUp++; }
+    else if(c[last] < rl && c[last-1] >= rl){ brkScore = -1.5; agreeDown++; }
+    else if(c[last] > rh){ brkScore = 0.7; }
+    else if(c[last] < rl){ brkScore = -0.7; }
+    if(brkScore !== 0) factors.push({name:"BOS", score:brkScore, weight:2.1});
+
+    var avgVol = sma(vol.slice(0, -1), Math.min(20, vol.length-1)) || 1;
+    var relVol = vol[last] / (avgVol || 1);
+    var volBoost = relVol > 1.4 ? 1.15 : relVol > 1.1 ? 1.05 : relVol < 0.6 ? 0.85 : 1;
+
+    var mtfScore = 0;
+    if(bars15m && bars15m.length >= 18){
+      var c15 = bars15m.map(b => +b.close);
+      var e15f = ema(c15.slice(-14), 5);
+      var e15s = ema(c15.slice(-14), 13);
+      var r15 = rsi(c15, 14);
+      if(e15f && e15s){
+        if(e15f > e15s && c15[c15.length-1] > e15s){ mtfScore += 1.2; agreeUp++; }
+        else if(e15f < e15s && c15[c15.length-1] < e15s){ mtfScore -= 1.2; agreeDown++; }
+      }
+      if(r15 < 40){ mtfScore += 0.5; }
+      else if(r15 > 60){ mtfScore -= 0.5; }
+      factors.push({name:"MTF-15م", score:mtfScore, weight:2.2});
+    }
+
+    var a = atr(h, l, c, 14);
+    var atrPct = a ? (a / c[last]) * 100 : 0.05;
+    var volFilter = 1;
+    if(atrPct > 0.18) volFilter = 0.75;
+    else if(atrPct < 0.02) volFilter = 0.7;
+
+    var move3 = c[last] - c[last-3];
+    var move4 = c[last] - c[last-4];
+    var avgRange = 0;
+    for(var ri=1; ri<=8; ri++) avgRange += (h[last-ri] - l[last-ri]);
+    avgRange /= 8;
+    var lateMove = false;
+
+    var totalW = 0, sum = 0;
+    var strongFactors = 0;
+    factors.forEach(function(f){
+      sum += f.score * f.weight;
+      totalW += f.weight;
+      if(Math.abs(f.score) >= 1.0) strongFactors++;
+    });
+    var finalScore = (sum / (totalW || 1)) * volBoost * volFilter;
+
+    var totalAgree = agreeUp + agreeDown;
+    var consensus = totalAgree > 0 ? Math.max(agreeUp, agreeDown) / totalAgree : 0;
+    var majority = Math.max(agreeUp, agreeDown);
+
+    if(consensus < 0.58) return null;
+    if(Math.abs(finalScore) < 0.52) return null;
+    if(majority < 3) return null;
+    if(strongFactors < 1) return null;
+
+    var dir = finalScore > 0 ? "UP" : "DOWN";
+    if(dir === "UP" && agreeDown > agreeUp) return null;
+    if(dir === "DOWN" && agreeUp > agreeDown) return null;
+
+    if(dir === "UP" && move3 > avgRange * 1.8) lateMove = true;
+    if(dir === "DOWN" && move3 < -avgRange * 1.8) lateMove = true;
+    if(dir === "UP" && move4 > avgRange * 2.2) lateMove = true;
+    if(dir === "DOWN" && move4 < -avgRange * 2.2) lateMove = true;
+    if(lateMove) return null;
+
+    if(dir === "UP" && r14 > 78) return null;
+    if(dir === "DOWN" && r14 < 22) return null;
+
+    var conf = Math.round(76 + Math.min(Math.abs(finalScore) * 20, 12) + (consensus - 0.58) * 28 + strongFactors * 1.5);
+    conf = Math.max(78, Math.min(96, conf));
+
+    var entry = "دخول فوري";
+    if(Math.abs(patternScore) >= 1.4){
+      entry = "دخول بعد إغلاق الشمعة · إشارة نمطية";
+    } else if(Math.abs(brkScore) >= 1.4){
+      entry = dir === "UP" ? "دخول عند كسر القمة" : "دخول عند كسر القاع";
+    } else if(Math.abs(finalScore) > 1.0 && consensus > 0.72){
+      entry = "دخول فوري (إشارة قوية)";
+    } else if(r14 < 32 || r14 > 68){
+      entry = "انتظار ارتداد خفيف ثم دخول";
+    } else {
+      entry = "انتظار تأكيد بسيط ثم دخول";
+    }
+
+    var active = factors
+      .filter(f => Math.abs(f.score) > 0.4)
+      .sort((a,b) => Math.abs(b.score)*b.weight - Math.abs(a.score)*a.weight)
+      .map(f => f.name)
+      .slice(0, 4);
+    var strat = "AI-v4: " + (active.length ? active.join(" + ") : "Ensemble");
+
+    return { dir, conf, entry, strat };
+  }
+
+  async function generateBatch(){
+    var statusEl = document.getElementById("status");
+    if(!TWELVE_API_KEY || TWELVE_API_KEY === "51fd331b829d4a1c8bf244f7eec93b8b"){
+      statusEl.textContent = "⚠️ لم تضع مفتاح Twelve Data في الكود";
+      statusEl.style.color = "#f85149";
+      return;
+    }
+    statusEl.style.color = "";
+    statusEl.textContent = "AI-v4 يحلل على إطار 5 دقائق (Twelve Data)...";
+    var newSignals = [];
+    var shuffled = PAIRS.slice().sort(function(){ return Math.random() - 0.5; });
+
+    for(var i=0; i<shuffled.length && newSignals.length < 7; i++){
+      var pair = shuffled[i];
+      var bars5 = await getCandles(pair.s, "5min", 60);
+      var bars15 = await getCandles(pair.s, "15min", 30);
+      var res = aiEnsemble(bars5, bars15);
+
+      if(res && res.conf >= 78){
+        newSignals.push({
+          n: pair.n,
+          s: pair.s,
+          dir: res.dir,
+          bars: 5,
+          conf: res.conf,
+          entry: res.entry,
+          strat: res.strat,
+          t: Date.now()
+        });
+      }
+      await new Promise(r => setTimeout(r, 8000));
+    }
+
+    newSignals.sort(function(a,b){ return b.conf - a.conf; });
+
+    if(newSignals.length){
+      signals = newSignals.concat(signals).slice(0, 40);
+      set("quotex_ai_sig", signals);
+      render();
+      statusEl.textContent = "AI-v4: "+newSignals.length+" إشارة · التحديث القادم بعد ساعة";
+    } else {
+      statusEl.textContent = "لا توجد إشارات مناسبة حالياً · إعادة المحاولة بعد ساعة";
+    }
+  }
+
+  function scheduleNext(){
+    nextHour = Date.now() + 60*60*1000;
+    if(timer) clearInterval(timer);
+    timer = setInterval(function(){
+      generateBatch();
+      nextHour = Date.now() + 60*60*1000;
+    }, 60*60*1000);
+  }
+
+  document.getElementById("btnOn").onclick = function(){
+    document.getElementById("btnOn").className = "on";
+    document.getElementById("btnOff").className = "";
+    generateBatch();
+    scheduleNext();
+  };
+  document.getElementById("btnOff").onclick = function(){
+    if(timer) clearInterval(timer);
+    nextHour = null;
+    document.getElementById("btnOn").className = "";
+    document.getElementById("btnOff").className = "on";
+    document.getElementById("status").textContent = "تم إيقاف النظام";
+    document.getElementById("nextUpdate").textContent = "—";
+  };
+  document.getElementById("btnNow").onclick = generateBatch;
+
+  render();
+})();
+</script>
+</body>
+</html>
